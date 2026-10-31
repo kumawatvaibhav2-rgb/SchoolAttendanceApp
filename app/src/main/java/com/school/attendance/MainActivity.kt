@@ -182,7 +182,6 @@ fun AttendanceScreen() {
         }
     ) { pad ->
         Column(modifier = Modifier.fillMaxSize().padding(pad).padding(16.dp)) {
-            // Dropdown / Class Selector
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Class: $selectedGrade", style = MaterialTheme.typography.titleMedium)
                 Text("Sec: $selectedSection", style = MaterialTheme.typography.titleMedium)
