@@ -115,8 +115,8 @@ fun AttendanceScreen() {
 
     var selectedGrade by remember { mutableStateOf("Nursery") }
     var selectedSection by remember { mutableStateOf("A") }
-    var students by remember { mutableStateOf<List<StudentItem>>(emptyList()) }
-    var attendanceMap by remember { mutableStateOf>(emptyMap()) }
+    var students by remember { mutableStateOf < List < StudentItem >> (emptyList()) }
+    var attendanceMap by remember { mutableStateOf > (emptyMap()) }
     var isLoading by remember { mutableStateOf(false) }
 
     fun loadStudents() {
