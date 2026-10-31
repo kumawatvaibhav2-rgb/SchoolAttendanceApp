@@ -183,4 +183,61 @@ fun AttendanceScreen() {
     ) { pad ->
         Column(modifier = Modifier.fillMaxSize().padding(pad).padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Class: $selectedGrade", style =
+                Text("Class: $selectedGrade", style = MaterialTheme.typography.titleMedium)
+                Text("Sec: $selectedSection", style = MaterialTheme.typography.titleMedium)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(students) { stu ->
+                        val rollKey = stu.rollNo.toString()
+                        val currentStatus = attendanceMap[rollKey] ?: "Present"
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            elevation = CardDefaults.cardElevation(2.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("${stu.rollNo}: ${stu.name}", style = MaterialTheme.typography.bodyLarge)
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    BadgeButton("P", Color(0xFF2E7D32), currentStatus == "Present") {
+                                        attendanceMap = attendanceMap + (rollKey to "Present")
+                                    }
+                                    BadgeButton("A", Color(0xFFC62828), currentStatus == "Absent") {
+                                        attendanceMap = attendanceMap + (rollKey to "Absent")
+                                    }
+                                    BadgeButton("L", Color(0xFFEF6C00), currentStatus == "Late") {
+                                        attendanceMap = attendanceMap + (rollKey to "Late")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BadgeButton(text: String, color: Color, isSelected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .background(if (isSelected) color else Color.LightGray.copy(alpha = 0.4f), RoundedCornerShape(18.dp))
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, color = if (isSelected) Color.White else Color.Black)
+    }
+}
