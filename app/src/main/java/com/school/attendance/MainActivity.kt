@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -111,10 +113,14 @@ fun AttendanceScreen() {
     val coroutineScope = rememberCoroutineScope()
 
     val grades = remember { listOf("Nursery", "LKG", "UKG") + (1..12).map { "Class $it" } }
-    val sections = remember { listOf("A", "B", "C") }
+    val sections = remember { listOf("A", "B", "C", "D") }
 
     var selectedGrade by remember { mutableStateOf("Nursery") }
     var selectedSection by remember { mutableStateOf("A") }
+    
+    var gradeMenuExpanded by remember { mutableStateOf(false) }
+    var sectionMenuExpanded by remember { mutableStateOf(false) }
+
     var students by remember { mutableStateOf(emptyList<StudentItem>()) }
     var attendanceMap by remember { mutableStateOf(emptyMap<String, String>()) }
     var isLoading by remember { mutableStateOf(false) }
@@ -144,13 +150,21 @@ fun AttendanceScreen() {
         topBar = {
             TopAppBar(
                 title = { Text("School Attendance") },
+                actions = {
+                    IconButton(onClick = { loadStudents() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
             )
         },
         bottomBar = {
             Button(
                 onClick = {
-                    if (students.isEmpty()) return@Button
+                    if (students.isEmpty()) {
+                        Toast.makeText(context, "Is class me koi student nahi hai!", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
                     isLoading = true
                     coroutineScope.launch {
                         try {
@@ -165,7 +179,7 @@ fun AttendanceScreen() {
                             val payload = AttendancePayload(today, selectedGrade, selectedSection, records)
                             val res = withContext(Dispatchers.IO) { RetrofitClient.api.submitAttendance(payload) }
                             if (res.isSuccessful) {
-                                Toast.makeText(context, "Drive Sheet me attendance save ho gayi!", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Drive Sheet me save ho gayi!", Toast.LENGTH_LONG).show()
                             }
                         } catch (e: Exception) {
                             Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -177,21 +191,83 @@ fun AttendanceScreen() {
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text(if (isLoading) "Processing..." else "Drive me Save Karein")
+                Text(if (isLoading) "Processing..." else "Drive me Save Karein (${students.size} Students)")
             }
         }
     ) { pad ->
         Column(modifier = Modifier.fillMaxSize().padding(pad).padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Class: $selectedGrade", style = MaterialTheme.typography.titleMedium)
-                Text("Sec: $selectedSection", style = MaterialTheme.typography.titleMedium)
+            // Interactive Dropdown Selectors
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Class Selector Dropdown
+                ExposedDropdownMenuBox(
+                    expanded = gradeMenuExpanded,
+                    onExpandedChange = { gradeMenuExpanded = !gradeMenuExpanded },
+                    modifier = Modifier.weight(1.2f)
+                ) {
+                    OutlinedTextField(
+                        value = selectedGrade,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Class") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = gradeMenuExpanded) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = gradeMenuExpanded,
+                        onDismissRequest = { gradeMenuExpanded = false }
+                    ) {
+                        grades.forEach { grade ->
+                            DropdownMenuItem(
+                                text = { Text(grade) },
+                                onClick = {
+                                    selectedGrade = grade
+                                    gradeMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Section Selector Dropdown
+                ExposedDropdownMenuBox(
+                    expanded = sectionMenuExpanded,
+                    onExpandedChange = { sectionMenuExpanded = !sectionMenuExpanded },
+                    modifier = Modifier.weight(0.8f)
+                ) {
+                    OutlinedTextField(
+                        value = selectedSection,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Sec") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = sectionMenuExpanded) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = sectionMenuExpanded,
+                        onDismissRequest = { sectionMenuExpanded = false }
+                    ) {
+                        sections.forEach { sec ->
+                            DropdownMenuItem(
+                                text = { Text(sec) },
+                                onClick = {
+                                    selectedSection = sec
+                                    sectionMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
+                }
+            } else if (students.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Is Class ($selectedGrade - $selectedSection) me koi student nahi mila.\nSheet me students add karein.", color = Color.Gray, fontSize = 14.sp)
                 }
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -208,7 +284,10 @@ fun AttendanceScreen() {
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("${stu.rollNo}: ${stu.name}", style = MaterialTheme.typography.bodyLarge)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(stu.name, style = MaterialTheme.typography.titleMedium)
+                                    Text("Roll: ${stu.rollNo}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                }
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     BadgeButton("P", Color(0xFF2E7D32), currentStatus == "Present") {
                                         attendanceMap = attendanceMap + (rollKey to "Present")
